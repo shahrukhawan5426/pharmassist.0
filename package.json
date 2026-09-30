@@ -1,0 +1,29 @@
+{
+  "name": "pharmassist",
+  "version": "1.0.0",
+  "description": "PharmAssist: An Antibiotic Stewardship and Clinical Decision-Support System for Pharmacists",
+  "author": "Dr Shah Rukh",
+  "main": "electron/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:mac": "electron-builder --mac --publish never"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/cli": "^6.1.0",
+    "@capacitor/core": "^6.1.0",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.pharmassist.app",
+    "productName": "PharmAssist",
+    "files": ["electron/**", "www/**"],
+    "directories": {"output": "dist", "buildResources": "."},
+    "win": {"target": "nsis", "icon": "icon.png"},
+    "nsis": {"oneClick": false, "allowToChangeInstallationDirectory": true},
+    "mac": {"target": [{"target": "dmg", "arch": ["x64", "arm64"]}], "icon": "icon.png", "category": "public.app-category.medical", "identity": null}
+  }
+}

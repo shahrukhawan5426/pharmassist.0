@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PharmAssist</title>
+<meta name="theme-color" content="#0F6B6B">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PharmAssist">
+<style>
+:root{--bg:#F4F8F8;--card:#fff;--tx:#12302F;--mut:#5C7573;--pri:#0F6B6B;--acc:#F5A623;--bd:#DCE8E7}
+@media(prefers-color-scheme:dark){:root{--bg:#0C1A1A;--card:#142626;--tx:#E6F2F1;--mut:#93AEAC;--bd:#22403F}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx);padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+header{background:var(--pri);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:20px} header small{opacity:.85}
+main{max-width:640px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:16px;margin-bottom:12px}
+.card h3{margin:0 0 6px;font-size:16px} .mut{color:var(--mut);font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:16px;text-align:left;color:var(--tx);font:inherit;cursor:pointer}
+.tile b{display:block;margin-top:6px}
+input,select{width:100%;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:16px;margin:6px 0 12px}
+label{font-size:13px;color:var(--mut)}
+button.pri{background:var(--pri);color:#fff;border:0;border-radius:12px;padding:12px 18px;font-size:16px;font-weight:600;cursor:pointer;width:100%}
+.res{background:var(--pri);color:#fff;border-radius:14px;padding:14px;margin-top:12px;display:none}
+.res big{font-size:28px;font-weight:700;display:block}
+.chk{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--bd)}
+.chk input{width:22px;height:22px;margin:2px 0 0;flex:none}
+.tag{display:inline-block;background:var(--bd);color:var(--tx);border-radius:8px;padding:2px 8px;font-size:12px;margin-right:6px}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--bd);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:6}
+nav button{flex:1;background:none;border:0;color:var(--mut);padding:10px 0 8px;font-size:11px;cursor:pointer}
+nav button span{display:block;font-size:20px} nav button.on{color:var(--pri);font-weight:700}
+#gate{position:fixed;inset:0;background:var(--pri);color:#fff;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px}
+#gate img{width:120px;border-radius:26px;margin-bottom:16px} #gate p{max-width:420px;opacity:.92;line-height:1.5}
+#gate button{background:var(--acc);color:#1b1b1b;border:0;border-radius:12px;padding:14px 28px;font-size:16px;font-weight:700;margin-top:14px}
+.warn{border-left:4px solid var(--acc)}
+</style>
+</head>
+<body>
+<div id="gate">
+  <img src="icons/icon-192.png" alt="PharmAssist">
+  <h1 style="margin:0">PharmAssist</h1>
+  <div style="opacity:.85;margin-bottom:14px">by Dr Shah Rukh</div>
+  <p>For healthcare professionals only. This app supports, and never replaces, clinical judgement. Always verify against your local antibiogram and current guidelines. Do not enter patient names or identifiers.</p>
+  <button id="accept">I understand</button>
+</div>
+
+<header><h1 id="ttl">PharmAssist</h1><small>Antibiotic stewardship support</small></header>
+<main id="view"></main>
+<nav id="nav"></nav>
+
+<script>
+const DRUGS=[
+["Amoxicillin","Penicillin","Narrow-to-moderate. Many Gram-positives, some Gram-negatives.","Check penicillin allergy. Often suitable for oral step-down."],
+["Amoxicillin-clavulanate","Penicillin + beta-lactamase inhibitor","Broader. Adds beta-lactamase producers and some anaerobes.","Avoid overuse where amoxicillin alone is enough."],
+["Cefazolin","1st-gen cephalosporin","Gram-positive focus (MSSA), some Gram-negatives.","Common for surgical prophylaxis. Review cross-reactivity history."],
+["Ceftriaxone","3rd-gen cephalosporin","Broad Gram-negative, good Gram-positive cover. No Pseudomonas.","Reassess at 48-72 h. Consider narrowing by culture."],
+["Piperacillin-tazobactam","Anti-pseudomonal penicillin","Very broad including Pseudomonas and anaerobes.","Reserve for suitable indications. De-escalate early."],
+["Meropenem","Carbapenem","Very broad including ESBL producers.","Restricted agent. Needs clear indication and review."],
+["Ciprofloxacin","Fluoroquinolone","Gram-negative including Pseudomonas. Limited Gram-positive.","Watch tendon, QT and CNS effects. Interactions with cations."],
+["Azithromycin","Macrolide","Atypicals and some Gram-positives.","Check QT and interactions."],
+["Doxycycline","Tetracycline","Atypicals, some Gram-positives and Gram-negatives.","Avoid in pregnancy and young children."],
+["Vancomycin","Glycopeptide","Gram-positive including MRSA.","Needs level monitoring and renal function checks."],
+["Gentamicin","Aminoglycoside","Gram-negative.","Nephrotoxic and ototoxic. Level monitoring needed."],
+["Metronidazole","Nitroimidazole","Anaerobes and protozoa.","Avoid alcohol. Often good oral bioavailability."]
+];
+const CHECK=["Indication documented","Cultures taken before antibiotics (where possible)","Allergy status checked","Right drug for likely organism / local antibiogram","Right dose for weight and renal function","Right route. Can IV switch to oral?","Interactions checked","Stop date or duration defined","48-72 hour review planned (continue / narrow / stop)","Culture results reviewed and therapy de-escalated"];
+const TABS=[["home","🏠","Home"],["drugs","💊","Drugs"],["dose","🧮","Renal"],["check","✅","Checklist"],["about","ℹ️","About"]];
+const $=s=>document.querySelector(s);
+const ST={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+function nav(){ $('#nav').innerHTML=TABS.map(t=>`<button data-t="${t[0]}" class="${cur===t[0]?'on':''}"><span>${t[1]}</span>${t[2]}</button>`).join('');
+  document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.t)); }
+let cur='home';
+function go(t){cur=t;nav();window.scrollTo(0,0);V[t]();}
+const V={
+home(){ $('#ttl').textContent='PharmAssist';
+ $('#view').innerHTML=`<div class="card"><h3>Welcome, colleague</h3><div class="mut">Quick tools for safer, smarter antibiotic use.</div></div>
+ <div class="grid">
+ <button class="tile" onclick="go('drugs')">💊<b>Antibiotic guide</b><span class="mut">Class, spectrum, notes</span></button>
+ <button class="tile" onclick="go('dose')">🧮<b>Renal function</b><span class="mut">Creatinine clearance</span></button>
+ <button class="tile" onclick="go('check')">✅<b>Stewardship checklist</b><span class="mut">Before and after starting</span></button>
+ <button class="tile" onclick="go('about')">ℹ️<b>About</b><span class="mut">Developer and disclaimer</span></button>
+ </div>
+ <div class="card warn" style="margin-top:12px"><h3>Reminder</h3><div class="mut">Review every antibiotic at 48-72 hours: continue, narrow, switch to oral, or stop.</div></div>`;},
+drugs(){ $('#ttl').textContent='Antibiotic guide';
+ $('#view').innerHTML=`<input id="q" placeholder="Search antibiotic or class..." autocomplete="off"><div id="list"></div>`;
+ const draw=()=>{const q=$('#q').value.toLowerCase();
+  $('#list').innerHTML=DRUGS.filter(d=>d.join(' ').toLowerCase().includes(q)).map(d=>`<div class="card"><h3>${d[0]}</h3><span class="tag">${d[1]}</span><p style="margin:8px 0 4px">${d[2]}</p><div class="mut">${d[3]}</div></div>`).join('')||'<div class="mut">No match.</div>';};
+ $('#q').oninput=draw;draw();
+ $('#view').insertAdjacentHTML('beforeend','<div class="mut" style="padding:4px 4px 12px">General information only. Doses and local restrictions are not included. Use your institutional guideline.</div>');},
+dose(){ $('#ttl').textContent='Renal function';
+ $('#view').innerHTML=`<div class="card"><h3>Cockcroft-Gault creatinine clearance</h3>
+ <label>Sex</label><select id="sx"><option value="m">Male</option><option value="f">Female</option></select>
+ <label>Age (years)</label><input id="ag" type="number" inputmode="decimal" min="18">
+ <label>Weight (kg)</label><input id="wt" type="number" inputmode="decimal">
+ <label>Serum creatinine (mg/dL)</label><input id="cr" type="number" inputmode="decimal" step="0.01">
+ <button class="pri" id="go">Calculate</button>
+ <div class="res" id="rs"></div></div>
+ <div class="mut" style="padding:0 4px">Use actual, ideal or adjusted body weight according to your local policy. This is an estimate for adults and is not valid in unstable renal function.</div>`;
+ $('#go').onclick=()=>{const a=+$('#ag').value,w=+$('#wt').value,c=+$('#cr').value,f=$('#sx').value==='f';
+  const r=$('#rs');r.style.display='block';
+  if(!(a>0&&w>0&&c>0)){r.innerHTML='Please fill in every field.';return;}
+  let v=(140-a)*w/(72*c);if(f)v*=0.85;
+  const band=v>=90?'Normal or high':v>=60?'Mild reduction':v>=30?'Moderate reduction':v>=15?'Severe reduction':'Kidney failure range';
+  r.innerHTML=`<big>${v.toFixed(0)} mL/min</big>${band}<br><small>Check whether your antibiotic needs renal dose adjustment.</small>`;};},
+check(){ $('#ttl').textContent='Stewardship checklist';
+ const s=ST.get('chk',{});
+ $('#view').innerHTML=`<div class="card">${CHECK.map((t,i)=>`<label class="chk" style="color:var(--tx);font-size:15px"><input type="checkbox" data-i="${i}" ${s[i]?'checked':''}><span>${t}</span></label>`).join('')}
+ <button class="pri" id="rst" style="margin-top:14px">Clear checklist</button></div><div class="mut" style="padding:0 4px">Nothing here is linked to a patient. Ticks stay on this device only.</div>`;
+ document.querySelectorAll('.chk input').forEach(el=>el.onchange=()=>{s[el.dataset.i]=el.checked;ST.set('chk',s);});
+ $('#rst').onclick=()=>{ST.set('chk',{});V.check();};},
+about(){ $('#ttl').textContent='About';
+ $('#view').innerHTML=`<div class="card" style="text-align:center"><img src="icons/icon-192.png" width="96" style="border-radius:22px" alt=""><h3 style="margin-top:10px">PharmAssist</h3><div class="mut">Version 1.0.0</div></div>
+ <div class="card"><h3>Developer</h3>Developed by <b>Dr Shah Rukh</b>, Clinical Pharmacist.</div>
+ <div class="card warn"><h3>Disclaimer</h3><div class="mut">For healthcare professionals. This tool supports decisions and does not replace clinical judgement, local guidelines or the antibiogram. Do not enter patient-identifying information.</div></div>`;}
+};
+
+function start(){ nav(); go('home'); }
+if(ST.get('ok',false)){start();}else{
+ $('#gate').style.display='flex';
+ $('#accept').onclick=()=>{ST.set('ok',true);$('#gate').style.display='none';start();};
+ nav(); go('home');
+}
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+</script>
+</body>
+</html>
